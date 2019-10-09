@@ -1,0 +1,169 @@
+import React from "react";
+import GoogleMapReact from "google-map-react";
+import PropTypes from "prop-types";
+import html2canvas from "html2canvas";
+import * as fileService from "../../../../../services/fileUploadService";
+
+import logger from "../../../../../logger";
+const _logger = logger.extend("GoogleMap");
+const Marker = () => (
+  <div>
+    <span style={{ fontSize: "48px", color: "rgb(234,67,53)" }}>
+      <i className="fas fa-map-marker-alt" />
+    </span>
+  </div>
+);
+
+class GoogleMap extends React.Component {
+  canvasPrinting = () => {
+    var element = this.mapImage;
+    html2canvas(element, {
+      letterRendering: 1,
+      allowTaint: false,
+      logging: true,
+      useCORS: true,
+      Width: "600px",
+      height: "600px"
+    }).then(canvas => {
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append("files", blob, "test.jpg");
+        _logger(formData);
+        fileService
+          .upload(formData)
+          .then(this.uploadFileSuccess)
+          .catch(this.uploadFileFail);
+      });
+    });
+  };
+
+  uploadFileSuccess = results => {
+    _logger(results);
+    this.setParkingImageState(results.items[0].url);
+  };
+
+  setParkingImageState = image => {
+    this.props.setParkingImageState(image);
+  };
+
+  uploadFileFail = error => _logger(error);
+
+  getMapOptions = maps => {
+    return {
+      streetViewControl: false,
+      scaleControl: true,
+      fullscreenControl: false,
+      styles: [
+        {
+          featureType: "poi.business",
+          elementType: "labels",
+          stylers: [
+            {
+              visibility: "off"
+            }
+          ]
+        }
+      ],
+      gestureHandling: "greedy",
+      disableDoubleClickZoom: true,
+      minZoom: 11,
+      maxZoom: 18,
+
+      mapTypeControl: true,
+      mapTypeId: maps.MapTypeId.SATELLITE,
+      mapTypeControlOptions: {
+        style: maps.MapTypeControlStyle.HORIZONTAL_BAR,
+        position: maps.ControlPosition.BOTTOM_CENTER,
+        mapTypeIds: [
+          maps.MapTypeId.ROADMAP,
+          maps.MapTypeId.SATELLITE,
+          maps.MapTypeId.HYBRID
+        ]
+      },
+
+      zoomControl: true,
+      clickableIcons: false
+    };
+  };
+
+  handleCheck = () => {
+    this.props.handleCheck();
+    this.canvasPrinting();
+  };
+
+  render() {
+    if (!this.props.geoCord.lat) return <div>Loading...</div>;
+
+    return (
+      <div
+        className="card card-default"
+        ref={mapImage => {
+          this.mapImage = mapImage;
+        }}
+      >
+        <div className="card-body text-center">
+          <div
+            style={{ height: "80vh", width: "100%" }}
+            ref={mapImage => {
+              this.mapImage = mapImage;
+            }}
+          >
+            {this.props.isSubmitted ? (
+              ""
+            ) : (
+              <div
+                className="custom-control custom-checkbox"
+                style={{ marginBottom: "10px" }}
+              >
+                <input
+                  type="checkbox"
+                  className={"custom-control-input"}
+                  value=""
+                  id="signUpTerms"
+                  name="terms"
+                  onChange={this.handleCheck}
+                />
+
+                <label className="custom-control-label" htmlFor="signUpTerms">
+                  Parking Is At This Venue Loacation?
+                </label>
+              </div>
+            )}
+
+            <GoogleMapReact
+              bootstrapURLKeys={{
+                key: "xxxxxxxxxxxxxxxxxxxxx"
+              }}
+              defaultCenter={{
+                lat: this.props.geoCord.lat,
+                lng: this.props.geoCord.lng
+              }}
+              defaultZoom={18}
+              options={this.getMapOptions}
+            >
+              <Marker
+                lat={this.props.geoCord.lat}
+                lng={this.props.geoCord.lng}
+              />
+            </GoogleMapReact>
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+GoogleMap.propTypes = {
+  google: PropTypes.any,
+  map: PropTypes.any,
+  loading: PropTypes.any,
+  isSubmitted: PropTypes.bool,
+  handleCheck: PropTypes.func,
+  setParkingImageState: PropTypes.func,
+  geoCord: PropTypes.shape({
+    lat: PropTypes.number,
+    lng: PropTypes.number
+  })
+};
+
+export default GoogleMap;
