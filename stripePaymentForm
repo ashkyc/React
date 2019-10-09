@@ -1,0 +1,193 @@
+import React from "react";
+import CardSection from "./CardSection";
+import PaymentAmount from "./PaymentAmount";
+import EnterAmount from "./EnterAmount";
+import PropTypes from "prop-types";
+import { injectStripe } from "react-stripe-elements";
+import logger from "../../../logger";
+import * as donationService from "../../../services/donationService";
+import Destination from "./DestinationAccount";
+import swal from "sweetalert";
+
+const _logger = logger.extend("PaymentForm");
+
+class PaymentForm extends React.Component {
+  handleSubmit = event => {
+    event.preventDefault();
+    this.props.stripe
+      .createToken({
+        type: "card",
+        name: this.props.name
+      })
+      .then(({ token }) => {
+        let data = {
+          amount: this.props.donationAmount * 100,
+          currency: "usd",
+          token: token.id,
+          destination: this.props.destinationAccount
+        };
+        _logger(data, token);
+        donationService.charge(data);
+      })
+      .then(this.handleSuccess)
+      .catch(this.handleError);
+  };
+
+  handleSuccess = () => {
+    swal("Thank you for your donation", {
+      icon: "success",
+      timer: 3000
+    });
+    this.props.history.goBack();
+    this.props.resetForm();
+  };
+
+  handleError = error => {
+    swal({
+      title: "Something went wrong!",
+      text: error.toString(),
+      icon: "warning",
+      dangerMode: true,
+      timer: 3000
+    });
+  };
+
+  render() {
+    return (
+      <div className="cell example example5" id="example-5">
+        <form>
+          <fieldset>
+            <legend
+              className="card-only"
+              data-tid="elements_examples.htmlForm.pay_with_card"
+            >
+              Donate with Stripe
+            </legend>
+            <legend
+              className="payment-request-available"
+              data-tid="elements_examples.htmlForm.enter_card_manually"
+            >
+              Or enter card details
+            </legend>
+            <Destination
+              selectDestination={this.props.selectDestination}
+              selectDestinationAccount={this.props.selectDestinationAccount}
+              destination={this.props.destination}
+              destinationAccount={this.props.destinationAccount}
+              orgAccounts={this.props.orgAccounts}
+              eventAccounts={this.props.eventAccounts}
+            />
+            <label>Your information:</label>
+            <div className="row">
+              <div className="field col-12">
+                <label
+                  htmlFor="example5-name"
+                  data-tid="elements_examples.htmlForm.name_label"
+                >
+                  Name
+                </label>
+                <input
+                  id="example5-name"
+                  data-tid="elements_examples.htmlForm.name_placeholder"
+                  className="input"
+                  type="text"
+                  placeholder="Jane Doe"
+                  autoComplete="name"
+                  name="name"
+                  onChange={this.props.updateMetaData}
+                />
+              </div>
+            </div>
+            <div className="row">
+              <div className="field col-7">
+                <label
+                  htmlFor="example5-email"
+                  data-tid="elements_examples.htmlForm.email_label"
+                >
+                  Email
+                </label>
+                <input
+                  id="example5-email"
+                  data-tid="elements_examples.htmlForm.email_placeholder"
+                  className="input"
+                  type="text"
+                  placeholder="janedoe@gmail.com"
+                  autoComplete="email"
+                  name="email"
+                  onChange={this.props.updateMetaData}
+                />
+              </div>
+              <div className="field col-5">
+                <label
+                  htmlFor="example5-phone"
+                  data-tid="elements_examples.htmlForm.phone_label"
+                >
+                  Phone
+                </label>
+                <input
+                  id="example5-phone"
+                  data-tid="elements_examples.htmlForm.phone_placeholder"
+                  className="input"
+                  type="text"
+                  placeholder="(941) 555-0123"
+                  autoComplete="tel"
+                  name="phone"
+                  onChange={this.props.updateMetaData}
+                />
+              </div>
+            </div>
+            <div className="col-12 py-1 mb-2">
+              <PaymentAmount
+                enterAmount={this.props.enterAmount}
+                otherAmountBtnClick={this.props.otherAmountBtnClick}
+                amountBtnClick={this.props.amountBtnClick}
+                donationAmount={this.props.donationAmount}
+              />
+            </div>
+            {this.props.enterAmount ? (
+              <div className="col-6 mb-2">
+                <EnterAmount otherAmountEnter={this.props.otherAmountEnter} />
+              </div>
+            ) : null}
+            <div className="col-12 py-2 mb-2">
+              <CardSection donationAmount={this.props.donationAmount} />
+              <button
+                className="btn example example1 mx-auto py-0"
+                onClick={this.handleSubmit}
+              >
+                Donate ${this.props.donationAmount}
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+    );
+  }
+}
+
+PaymentForm.propTypes = {
+  enterAmount: PropTypes.bool,
+  otherAmountBtnClick: PropTypes.func,
+  otherAmountEnter: PropTypes.func,
+  amountBtnClick: PropTypes.func,
+  donationAmount: PropTypes.number,
+  name: PropTypes.string,
+  email: PropTypes.string,
+  phone: PropTypes.string,
+  destinationAccount: PropTypes.string,
+  updateMetaData: PropTypes.func,
+  selectDestination: PropTypes.func,
+  selectDestinationAccount: PropTypes.func,
+  destination: PropTypes.string,
+  orgAccounts: PropTypes.array,
+  eventAccounts: PropTypes.array,
+  stripe: PropTypes.shape({
+    createToken: PropTypes.func
+  }),
+  history: PropTypes.shape({
+    goBack: PropTypes.func
+  }),
+  resetForm: PropTypes.func
+};
+
+export default injectStripe(PaymentForm);
