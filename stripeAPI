@@ -1,0 +1,170 @@
+import React, { Component } from "react";
+import { Elements, StripeProvider } from "react-stripe-elements";
+import InjectedPaymentForm from "./PaymentForm";
+import "./Donation.css";
+import * as donationService from "../../../services/donationService";
+import logger from "../../../logger";
+import PropTypes from "prop-types";
+
+const _logger = logger.extend("Donation");
+
+class Donation extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      enterAmount: false,
+      destination: "",
+      donationAmount: 0,
+      name: "",
+      email: "",
+      phone: "",
+      destinationAccount: "",
+      orgAccounts: [],
+      eventAccounts: []
+    };
+  }
+
+  componentDidMount() {
+    donationService
+      .getOrgAcct()
+      .then(this.successGetOrgAcct)
+      .catch(this.handleError);
+
+    donationService
+      .getEventAcct()
+      .then(this.successGetEventAcct)
+      .catch(this.handleError);
+  }
+
+  successGetEventAcct = data => {
+    this.setState(() => {
+      return {
+        eventAccounts: data.items
+      };
+    });
+  };
+
+  successGetOrgAcct = data => {
+    this.setState(() => {
+      return {
+        orgAccounts: data.items
+      };
+    });
+  };
+
+  handleError = error => {
+    _logger(error.response);
+  };
+
+  resetForm = () => {
+    this.setState(() => {
+      return {
+        enterAmount: false,
+        destination: "",
+        donationAmount: 0,
+        name: "",
+        email: "",
+        phone: "",
+        destinationAccount: "",
+        orgAccounts: [],
+        eventAccounts: []
+      };
+    });
+  };
+
+  selectDestinationAccount = event => {
+    let value = event.target.value;
+    this.setState(() => {
+      return {
+        destinationAccount: value
+      };
+    });
+  };
+
+  selectDestination = event => {
+    let name = event.target.name;
+    this.setState(() => {
+      return {
+        destination: name
+      };
+    });
+  };
+
+  updateMetaData = event => {
+    let name = event.target.name;
+    let value = event.target.value;
+    this.setState(() => {
+      return {
+        [name]: value
+      };
+    });
+  };
+
+  amountBtnClick = event => {
+    const name = Number(event.target.name);
+    this.setState(() => {
+      return {
+        donationAmount: name,
+        enterAmount: false
+      };
+    });
+  };
+
+  otherAmountBtnClick = () => {
+    this.setState(prevState => {
+      return {
+        enterAmount: !prevState.enterAmount,
+        donationAmount: 0
+      };
+    });
+  };
+
+  otherAmountEnter = event => {
+    const value = Number(event.target.value);
+    this.setState(() => {
+      return {
+        donationAmount: value
+      };
+    });
+  };
+
+  render() {
+    return (
+      <StripeProvider apiKey="xxxxxxxxxxxxxxxxxxxxx">
+        <div className="d-flex justify-content-center mt-3 example example5">
+          <div className="col-6" id="donation">
+            <Elements>
+              <InjectedPaymentForm
+                otherAmountBtnClick={this.otherAmountBtnClick}
+                otherAmountEnter={this.otherAmountEnter}
+                amountBtnClick={this.amountBtnClick}
+                enterAmount={this.state.enterAmount}
+                donationAmount={this.state.donationAmount}
+                name={this.state.name}
+                email={this.state.email}
+                phone={this.state.phone}
+                updateMetaData={this.updateMetaData}
+                destinationAccount={this.state.destinationAccount}
+                selectDestination={this.selectDestination}
+                destination={this.state.destination}
+                selectDestinationAccount={this.selectDestinationAccount}
+                orgAccounts={this.state.orgAccounts}
+                eventAccounts={this.state.eventAccounts}
+                history={this.props.history}
+                resetForm={this.resetForm}
+              />
+            </Elements>
+          </div>
+        </div>
+      </StripeProvider>
+    );
+  }
+}
+
+Donation.propTypes = {
+  history: PropTypes.shape({
+    goBack: PropTypes.func
+  })
+};
+
+export default Donation;
